@@ -14,7 +14,7 @@ except ImportError as e:
     sys.exit(-1)
 
 class ADB():
-    PYADB_VERSION = "0.1.5"
+    PYADB_VERSION = "0.1.6"
     
     __adb_path = None
     __output = None
@@ -130,8 +130,6 @@ class ADB():
 
             if( len(self.__output) == 0 ):
                 self.__output = None
-            else:
-                self.__output = [ x.strip() for x in self.__output.split('\n') if len(x.strip()) > 0 ]
 
             if( len(self.__error) == 0 ):
                 self.__error = None
@@ -148,7 +146,7 @@ class ADB():
         """
         self.run_cmd("version")
         try:
-            ret = self.__output[0].split()[-1:][0]
+            ret = self.__output.split()[-1:][0]
         except:
             ret = None
         return ret
@@ -227,20 +225,27 @@ class ADB():
         self.run_cmd('help')
         return self.__output
 
-    def get_devices(self):
+    def get_devices(self, mode="serial"):
         """
         Returns a list of connected devices
         adb devices
         mode serial/usb
         """
         error = 0
-        self.__devices = None
-        self.run_cmd("devices")
+        self.run_cmd(["devices", "-l"] if mode == "usb" else "devices")
         if self.__error is not None:
             return (1,self.__devices)
         try:
-            self.__devices = [x.split()[0] for x in self.__output[1:]]
+            if mode == 'serial':
+                self.__devices = self.__output.partition('\n')[2].replace('device','').split()
+            elif mode == 'usb':
+                self.__devices = re.sub('.+device |\sproduct.+|\n\n', '', self.__output.partition('\n')[2]).split()
+            
+            if self.__devices[1:] == ['no','permissions']:
+                self.__devices = None
+                error = 2
         except Exception as e:
+            print(e)
             self.__devices = None
             error = 2
 
@@ -499,10 +504,14 @@ class ADB():
         Look for a binary file on the device
         """
         
-        self.run_cmd(['shell','which',name])
+        self.shell_command(['which',name])
         
         if self.__output is None: # not found
             self.__error = "'%s' was not found" % name
-        elif self.__output[0] == "which: not found": # 'which' binary not available
+        elif self.__output.strip() == "which: not found": # 'which' binary not available
             self.__output = None
             self.__error = "which binary not found"
+        else:
+            self.__output = self.__output.strip()
+
+        return self.__output

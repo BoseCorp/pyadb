@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name = "pyadb",
-    version = "0.1.5",
+    version = "0.1.6",
     author = "Chema Garcia",
     author_email = "chema@safetybits.net",
     description = ("Simple python module to interact with Android Debug Bridge tool"),
